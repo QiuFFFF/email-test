@@ -7,6 +7,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY smtp_bridge/server.py .
 
-EXPOSE 2525
+EXPOSE 8080 2525
 
 CMD ["python", "server.py"]

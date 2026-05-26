@@ -16,6 +16,8 @@ import asyncio
 import email
 import base64
 import logging
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from email import policy
 from email.utils import parseaddr, getaddresses
 
@@ -34,6 +36,18 @@ ZEABUR_API_URL = os.environ.get(
 )
 SMTP_PORT = int(os.environ.get("SMTP_PORT", "2525"))
 SMTP_HOST = os.environ.get("SMTP_HOST", "0.0.0.0")
+HTTP_PORT = int(os.environ.get("PORT", "8080"))
+
+
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(b'{"status":"ok","service":"smtp-bridge"}')
+
+    def log_message(self, format, *args):
+        pass
 
 # 可选：固定 API Key（不通过 SMTP 密码传入时使用）
 ZEABUR_API_KEY = os.environ.get("ZEABUR_API_KEY", "")
@@ -166,6 +180,10 @@ def main():
     )
 
     controller.start()
+
+    http_server = HTTPServer(("0.0.0.0", HTTP_PORT), HealthHandler)
+    threading.Thread(target=http_server.serve_forever, daemon=True).start()
+    log.info(f"HTTP 健康检查: 0.0.0.0:{HTTP_PORT}")
     log.info(f"SMTP 桥接服务已启动: {SMTP_HOST}:{SMTP_PORT}")
     log.info(f"Zeabur API: {ZEABUR_API_URL}")
     log.info(f"认证模式: {'固定Key' if ZEABUR_API_KEY else 'SMTP密码传入Key'}")
